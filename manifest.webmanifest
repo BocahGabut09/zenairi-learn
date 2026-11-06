@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "Zenairi Learn",
+  "short_name": "Zenairi",
+  "description": "Ruang belajar Bahasa Zenairi bersama Zeni.",
+  "lang": "id",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8f5ec",
+  "theme_color": "#2864e8",
+  "icons": [
+    {
+      "src": "./assets/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

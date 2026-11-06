@@ -3,8 +3,37 @@ import { dictionary, dictionaryGroups, lessons, grammarRules, sampleSentences } 
 
 const app = document.querySelector('#app');
 const toastRoot = document.querySelector('#toast-root');
-const savedTheme = (() => { try { return localStorage.getItem('zenairi-theme') || 'light'; } catch { return 'light'; } })();
-document.documentElement.dataset.theme = savedTheme;
+const readThemePreference = () => {
+  try {
+    const value = localStorage.getItem('zenairi-theme');
+    return ['light', 'dark'].includes(value) ? value : 'system';
+  } catch { return 'system'; }
+};
+let themePreference = readThemePreference();
+const systemThemeQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const effectiveTheme = themePreference === 'system'
+    ? (systemThemeQuery?.matches ? 'dark' : 'light')
+    : themePreference;
+  document.documentElement.dataset.theme = effectiveTheme;
+  document.documentElement.dataset.themePreference = themePreference;
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) themeColor.content = effectiveTheme === 'dark' ? '#151f38' : '#2864e8';
+}
+function setThemePreference(preference) {
+  if (!['system', 'light', 'dark'].includes(preference)) return;
+  themePreference = preference;
+  try { localStorage.setItem('zenairi-theme', preference); } catch { /* Tema tetap berlaku untuk sesi ini. */ }
+  applyTheme();
+}
+applyTheme();
+systemThemeQuery?.addEventListener?.('change', () => {
+  if (themePreference === 'system') {
+    applyTheme();
+    render();
+  }
+});
+
 const state = {
   session: null, user: null, profile: null,
   progress: { xp: 0, level: 1, streak: 0, last_activity_date: null, completed_lessons: [] },
@@ -37,35 +66,75 @@ function toast(message, type = 'info') {
 
 function setPage(page) { state.page = page; state.lesson = null; render(); }
 
+let accountLoadVersion = 0;
+let accountLoadPendingFor = null;
+let accountLoadedFor = null;
 async function loadAccount(session) {
+  const nextUser = session?.user || null;
+  // Hindari query ganda bila INITIAL_SESSION dan SIGNED_IN tiba untuk akun yang sama.
+  if (nextUser && (accountLoadPendingFor === nextUser.id || accountLoadedFor === nextUser.id)) {
+    state.session = session;
+    state.user = nextUser;
+    return;
+  }
+
+  const requestVersion = ++accountLoadVersion;
   state.session = session;
-  state.user = session?.user || null;
+  state.user = nextUser;
   if (!state.user) {
+    accountLoadPendingFor = null;
+    accountLoadedFor = null;
     state.progress = { xp: 0, level: 1, streak: 0, last_activity_date: null, completed_lessons: [] };
     state.attempts = [];
+    state.page = 'home';
     render();
     return;
   }
-  const [progressResult, attemptsResult] = await Promise.all([
-    supabase.from('user_progress').select('*').eq('user_id', state.user.id).maybeSingle(),
-    supabase.from('quiz_attempts').select('id, lesson_id, score, total_questions, created_at').eq('user_id', state.user.id).order('created_at', { ascending: false }).limit(8)
-  ]);
-  if (progressResult.error) {
-    toast(`Gagal memuat progres: ${progressResult.error.message}`, 'error');
-  } else if (progressResult.data) {
-    state.progress = progressResult.data;
+
+  // Jangan bawa progres akun sebelumnya ketika pengguna berganti akun.
+  if (accountLoadedFor !== state.user.id) {
+    state.progress = { xp: 0, level: 1, streak: 0, last_activity_date: null, completed_lessons: [] };
+    state.attempts = [];
+  }
+  accountLoadPendingFor = state.user.id;
+
+  // Dashboard hanya mengambil progres yang benar-benar dibutuhkan.
+  // Riwayat kuis tidak diminta pada dashboard karena belum ada layar yang memerlukannya.
+  const { data, error } = await supabase.from('user_progress')
+    .select('user_id, xp, level, streak, last_activity_date, completed_lessons')
+    .eq('user_id', state.user.id)
+    .maybeSingle();
+
+  if (requestVersion !== accountLoadVersion) return;
+  accountLoadPendingFor = null;
+  accountLoadedFor = error ? null : state.user.id;
+  if (error) {
+    if (!navigator.onLine) {
+      toast('Sedang offline. Materi yang tersimpan di perangkat tetap dapat dibuka; progres dan XP perlu internet untuk disimpan.', 'info');
+    } else {
+      toast(`Gagal memuat progres: ${error.message}`, 'error');
+    }
+  } else if (data) {
+    state.progress = data;
+    try { localStorage.setItem(`zenairi-progress-${state.user.id}`, JSON.stringify(data)); } catch { /* Cache progres lokal bersifat opsional. */ }
   } else {
-    // Baris progres dibuat secara atomik oleh RPC saat materi pertama diselesaikan.
     state.progress = { xp: 0, level: 1, streak: 0, last_activity_date: null, completed_lessons: [] };
   }
-  if (attemptsResult.error) toast(`Riwayat kuis belum termuat: ${attemptsResult.error.message}`, 'error');
-  state.attempts = attemptsResult.data || [];
+  if (error && !navigator.onLine) {
+    try {
+      const cachedProgress = localStorage.getItem(`zenairi-progress-${state.user.id}`);
+      if (cachedProgress) state.progress = JSON.parse(cachedProgress);
+    } catch { /* Gunakan nilai awal bila cache tidak tersedia atau rusak. */ }
+  }
   state.page = 'home';
   render();
 }
-
 async function completeLesson(score, total) {
   if (!state.user || !state.lesson) return;
+  if (!navigator.onLine) {
+    toast('Hasil kuis belum bisa disimpan saat offline. Sambungkan internet lalu tekan Selesaikan lagi.', 'error');
+    return;
+  }
   state.busy = true;
   render();
   try {
@@ -115,7 +184,7 @@ function showAuth(mode = 'login') {
           <button class="btn btn-primary btn-full" type="submit" ${state.authBusy ? 'disabled' : ''}>${state.authBusy ? 'Memproses…' : state.authMode === 'login' ? 'Masuk ke Zenairi' : 'Buat akun'}</button>
         </form>
         <p class="auth-switch">${state.authMode === 'login' ? 'Belum punya akun?' : 'Sudah punya akun?'} <button class="text-button" data-action="switch-auth" data-mode="${state.authMode === 'login' ? 'register' : 'login'}">${state.authMode === 'login' ? 'Daftar di sini' : 'Masuk'}</button></p>
-        <div class="auth-note"><span>🔒</span><span>Progres tersimpan privat di akunmu.</span></div>
+        <div class="auth-note"><span>🔒</span><span>${navigator.onLine ? 'Progres tersimpan privat di akunmu.' : 'Kamu sedang offline. Login perlu internet; sesi yang masih tersimpan dapat membuka materi lokal.'}</span></div>
       </div><p class="auth-copyright">© 2026 Zenairi Learn</p></section>
     </main>`;
   document.querySelector('#auth-form').addEventListener('submit', handleAuthSubmit);
@@ -128,6 +197,7 @@ async function handleAuthSubmit(event) {
   const email = String(form.get('email') || '').trim();
   const password = String(form.get('password') || '');
   const name = String(form.get('name') || '').trim();
+  let authCompleted = false;
   state.authBusy = true; showAuth(state.authMode);
   try {
     if (state.authMode === 'register') {
@@ -143,13 +213,12 @@ async function handleAuthSubmit(event) {
       if (error) throw error;
       toast('Berhasil masuk. Selamat belajar!', 'success');
     }
-    const { data: sessionData } = await supabase.auth.getSession();
-    await loadAccount(sessionData.session);
+    authCompleted = true;
   } catch (error) {
     toast(error.message || 'Terjadi kesalahan saat autentikasi.', 'error');
   } finally {
     state.authBusy = false;
-    if (!state.user) showAuth(state.authMode);
+    if (!authCompleted && !state.user) showAuth(state.authMode);
   }
 }
 
@@ -166,7 +235,7 @@ function shell(content) {
         <div class="sidebar-bottom"><div class="side-quote"><span class="quote-mark">“</span><p>Satu bahasa,<br>satu identitas.</p><span class="quote-flower">✳</span></div><button class="profile-mini" data-action="navigate" data-page="profile"><span class="avatar">${escapeHTML(initials(name))}</span><span class="profile-mini-copy"><b>${escapeHTML(name)}</b><small>Pelajar Zenairi</small></span><span class="mini-chevron">›</span></button></div>
       </aside>
       <main class="main-area">
-        <header class="topbar"><div class="mobile-brand brand"><span class="brand-mark">Z</span><span>zenairi<span class="brand-thin"> learn</span></span></div><div class="topbar-right"><button class="theme-toggle" data-action="toggle-theme" aria-label="Ganti tema" title="Ganti tema">${document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙'}</button><div class="top-stat"><span>🔥</span><b>${state.progress.streak || 0}</b><small>hari</small></div><div class="top-stat xp-stat"><span>✦</span><b>${state.progress.xp || 0}</b><small>XP</small></div><button class="avatar top-avatar" data-action="navigate" data-page="profile">${escapeHTML(initials(name))}</button></div></header>
+        <header class="topbar"><div class="mobile-brand brand"><span class="brand-mark">Z</span><span>zenairi<span class="brand-thin"> learn</span></span></div><div class="topbar-right"><button class="theme-toggle" data-action="toggle-theme" aria-label="Ganti tema" title="Ganti tema">${document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙'}</button><span class="connection-status" data-connection-status ${navigator.onLine ? 'hidden' : ''} role="status">Offline · progres belum tersinkron</span><div class="top-stat"><span>🔥</span><b>${state.progress.streak || 0}</b><small>hari</small></div><div class="top-stat xp-stat"><span>✦</span><b>${state.progress.xp || 0}</b><small>XP</small></div><button class="avatar top-avatar" data-action="navigate" data-page="profile">${escapeHTML(initials(name))}</button></div></header>
         <div class="page-content">${content}</div>
         <nav class="mobile-nav">${navItem('home','⌂','Home')}${navItem('learn','▤','Belajar')}${navItem('dictionary','⌕','Kamus')}${navItem('achievements','✦','Prestasi')}${navItem('profile','◉','Profil')}</nav>
       </main>
@@ -199,10 +268,33 @@ function learnPage() {
   return `<section class="page-intro"><p class="eyebrow">KURIKULUM BERTAHAP</p><h1>Jalur belajar</h1><p class="muted">Pilih materi, pahami kosakata, lalu uji kemampuanmu.</p></section><section class="learn-summary"><div class="learn-summary-icon"><img src="./assets/zeni-avatar.webp" alt="Zeni" loading="lazy"></div><div><b>${completedCount()} dari ${lessons.length} materi selesai</b><p>Setiap materi yang diselesaikan menambah XP dan progres akunmu.</p></div><div class="learn-summary-progress"><strong>${percent()}%</strong><div class="progress-track"><span style="width:${percent()}%"></span></div></div></section><div class="lesson-path">${lessons.map((l,i)=>`<div class="path-line"><div class="path-node ${isComplete(l.id) ? 'path-complete' : ''}">${isComplete(l.id) ? '✓' : String(i+1).padStart(2,'0')}</div><div class="path-card">${lessonCard(l,i)}</div></div>`).join('')}</div><section class="grammar-callout"><span class="grammar-icon">✎</span><div><b>Ingat aturan dasarnya</b><p>Subjek + Kata Kerja + Objek. Kata sifat ditulis setelah kata benda.</p></div><button class="text-button" data-action="show-grammar">Lihat aturan →</button></section>`;
 }
 
+function csvCell(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function downloadDictionary() {
+  const rows = [
+    ['Kata Zenairi', 'Arti Bahasa Indonesia', 'Kelompok'],
+    ...dictionary.map(item => [item.word, item.meaning, item.group])
+  ];
+  // BOM membantu Excel mengenali UTF-8; titik koma cocok untuk setelan regional Indonesia.
+  const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'kamus-zenairi.csv';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Kamus berhasil disiapkan: ${dictionary.length} entri.`, 'success');
+}
+
 function dictionaryPage() {
   const search = state.dictionarySearch.toLowerCase().trim();
   const filtered = dictionary.filter(item => (state.dictionaryGroup === 'Semua kategori' || item.group === state.dictionaryGroup) && (!search || item.word.toLowerCase().includes(search) || item.meaning.toLowerCase().includes(search)));
-  return `<section class="page-intro"><p class="eyebrow">RUJUKAN KOSAKATA</p><h1>Kamus Zenairi</h1><p class="muted">Cari kata berdasarkan ejaan, arti, atau kelompok kata.</p></section><section class="dictionary-toolbar"><label class="search-box"><span>⌕</span><input id="dictionary-search" type="search" placeholder="Cari kata Zenairi atau arti…" value="${escapeHTML(state.dictionarySearch)}"></label><label class="select-wrap"><span>Kategori</span><select id="dictionary-group"><option>Semua kategori</option>${dictionaryGroups.map(g=>`<option ${state.dictionaryGroup===g?'selected':''}>${g}</option>`).join('')}</select></label></section><div class="dictionary-count">Menampilkan <b>${filtered.length}</b> entri dari ${dictionary.length} kosakata</div><section class="dictionary-table-wrap"><table class="dictionary-table"><thead><tr><th>KATA ZENAIRI</th><th>ARTI BAHASA INDONESIA</th><th>KELOMPOK</th></tr></thead><tbody>${filtered.map(item=>`<tr><td><span class="word-pill">${escapeHTML(item.word)}</span></td><td>${escapeHTML(item.meaning)}</td><td><span class="group-tag">${escapeHTML(item.group)}</span></td></tr>`).join('') || '<tr><td class="empty-table" colspan="3">Kata tidak ditemukan. Coba kata lain.</td></tr>'}</tbody></table></section><p class="dictionary-footnote">Catatan: kata yang memiliki bentuk sama tetapi arti berbeda ditampilkan terpisah mengikuti konteks kamus.</p>`;
+  return `<section class="page-intro"><p class="eyebrow">RUJUKAN KOSAKATA</p><h1>Kamus Zenairi</h1><p class="muted">Cari kata berdasarkan ejaan, arti, atau kelompok kata.</p></section><section class="dictionary-toolbar"><label class="search-box"><span>⌕</span><input id="dictionary-search" type="search" placeholder="Cari kata Zenairi atau arti…" value="${escapeHTML(state.dictionarySearch)}"></label><label class="select-wrap"><span>Kategori</span><select id="dictionary-group"><option>Semua kategori</option>${dictionaryGroups.map(g=>`<option ${state.dictionaryGroup===g?'selected':''}>${g}</option>`).join('')}</select></label><button class="btn btn-outline dictionary-download" data-action="download-dictionary" type="button">↓ Unduh kamus CSV</button></section><div class="dictionary-count">Menampilkan <b>${filtered.length}</b> entri dari ${dictionary.length} kosakata</div><section class="dictionary-table-wrap"><table class="dictionary-table"><thead><tr><th>KATA ZENAIRI</th><th>ARTI BAHASA INDONESIA</th><th>KELOMPOK</th></tr></thead><tbody>${filtered.map(item=>`<tr><td><span class="word-pill">${escapeHTML(item.word)}</span></td><td>${escapeHTML(item.meaning)}</td><td><span class="group-tag">${escapeHTML(item.group)}</span></td></tr>`).join('') || '<tr><td class="empty-table" colspan="3">Kata tidak ditemukan. Coba kata lain.</td></tr>'}</tbody></table></section><p class="dictionary-footnote">Catatan: kata yang memiliki bentuk sama tetapi arti berbeda ditampilkan terpisah mengikuti konteks kamus.</p>`;
 }
 
 function achievementPage() {
@@ -219,7 +311,7 @@ function achievementPage() {
 
 function profilePage() {
   const name = state.user?.user_metadata?.display_name || state.user?.email?.split('@')[0] || 'Pelajar';
-  return `<section class="page-intro"><p class="eyebrow">AKUN DAN PERJALANAN</p><h1>Profil pelajar</h1><p class="muted">Informasi akun dan ringkasan perjalanan Zenairi-mu.</p></section><section class="profile-hero"><div class="profile-avatar-large">${escapeHTML(initials(name))}</div><div class="profile-main"><span class="profile-role">PELAJAR ZENAIRI</span><h2>${escapeHTML(name)}</h2><p>${escapeHTML(state.user?.email || '')}</p></div><div class="profile-level">LEVEL<strong>${state.progress.level || 1}</strong></div></section><section class="profile-stats"><div><span>Total XP</span><b>${state.progress.xp || 0}</b></div><div><span>Streak</span><b>${state.progress.streak || 0} hari</b></div><div><span>Materi selesai</span><b>${completedCount()} / ${lessons.length}</b></div></section><section class="panel settings-panel"><div><p class="eyebrow">PENGATURAN TAMPILAN</p><h3>Tema yang nyaman</h3><p class="muted">Pilih tampilan terang atau gelap. Pilihan tersimpan di perangkat ini.</p><button class="btn btn-outline theme-profile-button" data-action="toggle-theme">${document.documentElement.dataset.theme === 'dark' ? '☀️ Gunakan tema terang' : '🌙 Gunakan tema gelap'}</button></div><div class="account-settings"><p class="eyebrow">PENGATURAN AKUN</p><h3>Kelola sesi belajarmu</h3><p class="muted">Progres belajar ditautkan ke akun Supabase dan hanya dapat dibaca oleh pemilik akun.</p><button class="btn btn-outline" data-action="logout">Keluar dari akun ↗</button></div></section><section class="profile-footnote">Bergabung dalam perjalanan Zenairi · Satu bahasa, satu identitas.</section>`;
+  return `<section class="page-intro"><p class="eyebrow">AKUN DAN PERJALANAN</p><h1>Profil pelajar</h1><p class="muted">Informasi akun dan ringkasan perjalanan Zenairi-mu.</p></section><section class="profile-hero"><div class="profile-avatar-large">${escapeHTML(initials(name))}</div><div class="profile-main"><span class="profile-role">PELAJAR ZENAIRI</span><h2>${escapeHTML(name)}</h2><p>${escapeHTML(state.user?.email || '')}</p></div><div class="profile-level">LEVEL<strong>${state.progress.level || 1}</strong></div></section><section class="profile-stats"><div><span>Total XP</span><b>${state.progress.xp || 0}</b></div><div><span>Streak</span><b>${state.progress.streak || 0} hari</b></div><div><span>Materi selesai</span><b>${completedCount()} / ${lessons.length}</b></div></section><section class="panel settings-panel"><div><p class="eyebrow">PENGATURAN TAMPILAN</p><h3>Tema yang nyaman</h3><p class="muted">Ikuti pengaturan perangkat atau pilih tema sendiri. Pilihan tersimpan di perangkat ini.</p><div class="theme-options"><button class="btn btn-outline ${themePreference === 'system' ? 'is-selected' : ''}" data-action="set-theme" data-theme="system" aria-pressed="${themePreference === 'system'}">◐ Otomatis</button><button class="btn btn-outline ${themePreference === 'light' ? 'is-selected' : ''}" data-action="set-theme" data-theme="light" aria-pressed="${themePreference === 'light'}">☀️ Terang</button><button class="btn btn-outline ${themePreference === 'dark' ? 'is-selected' : ''}" data-action="set-theme" data-theme="dark" aria-pressed="${themePreference === 'dark'}">🌙 Gelap</button></div></div><div class="account-settings"><p class="eyebrow">PENGATURAN AKUN</p><h3>Kelola sesi belajarmu</h3><p class="muted">Progres belajar ditautkan ke akun Supabase dan hanya dapat dibaca oleh pemilik akun.</p><button class="btn btn-outline" data-action="logout">Keluar dari akun ↗</button></div></section><section class="profile-footnote">Bergabung dalam perjalanan Zenairi · Satu bahasa, satu identitas.</section>`;
 }
 
 function questionExplanation(question) {
@@ -312,10 +404,14 @@ app.addEventListener('click', async (event) => {
   }
   if (action === 'toggle-theme') {
     const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = nextTheme;
-    try { localStorage.setItem('zenairi-theme', nextTheme); } catch { /* Tema tetap berlaku untuk sesi ini. */ }
+    setThemePreference(nextTheme);
     render();
   }
+  if (action === 'set-theme') {
+    setThemePreference(target.dataset.theme);
+    render();
+  }
+  if (action === 'download-dictionary') downloadDictionary();
   if (action === 'logout') {
     const { error } = await supabase.auth.signOut();
     if (error) toast(error.message,'error'); else { state.user=null; state.session=null; state.page='home'; toast('Kamu sudah keluar. Sampai jumpa!','success'); render(); }
@@ -328,12 +424,30 @@ app.addEventListener('click', async (event) => {
 });
 
 supabase.auth.onAuthStateChange((event, session) => {
-  // Jangan menjalankan query Supabase di callback sinkron Auth; jadwalkan setelah callback selesai.
-  // Token refresh tidak boleh mengembalikan pengguna ke halaman Beranda.
+  // INITIAL_SESSION menjadi satu-satunya pemuatan awal; SIGNED_IN / SIGNED_OUT menangani perubahan sesi.
+  // Callback ditunda agar tidak menjalankan query Supabase secara re-entrant.
   if (['INITIAL_SESSION', 'SIGNED_IN', 'SIGNED_OUT'].includes(event)) {
     setTimeout(() => loadAccount(session), 0);
   }
 });
 
-const { data: { session } } = await supabase.auth.getSession();
-await loadAccount(session);
+// Daftarkan cache offline untuk shell dan modul statis aplikasi.
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {
+    // Aplikasi tetap berjalan normal tanpa dukungan service worker.
+  });
+}
+
+function updateConnectionStatus() {
+  const indicator = document.querySelector('[data-connection-status]');
+  if (indicator) indicator.hidden = navigator.onLine;
+}
+window.addEventListener('online', () => {
+  updateConnectionStatus();
+  toast('Koneksi kembali. Kamu bisa menyimpan hasil belajar.', 'success');
+  if (state.user && !accountLoadedFor) setTimeout(() => loadAccount(state.session), 0);
+});
+window.addEventListener('offline', () => {
+  updateConnectionStatus();
+  toast('Kamu sedang offline. Materi tersimpan tetap bisa dibuka; penyimpanan progres membutuhkan internet.', 'info');
+});

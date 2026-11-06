@@ -15,10 +15,13 @@ Website pembelajaran Bahasa Zenairi dengan Supabase Auth dan penyimpanan progres
 
 - Desain minimalis modern dengan palet biru, putih, dan cyan mengikuti mockup.
 - Maskot Zeni (rubah-merak) tersedia sebagai ilustrasi WebP dan ikon identitas.
-- Dark mode dan light mode; pilihan tema disimpan di perangkat menggunakan localStorage.
+- Tema otomatis mengikuti pengaturan terang/gelap perangkat, dengan pilihan manual Terang/Gelap; preferensi disimpan di perangkat.
 - Kuis memiliki langkah **Periksa jawaban**. Jawaban benar/salah ditandai, jawaban yang benar ditampilkan, dan pembahasan singkat muncul sebelum pengguna dapat melanjutkan.
 - Ilustrasi dioptimalkan ke WebP dan dimuat secara lazy saat sesuai.
 - Header `_headers` menambahkan cache untuk aset statis pada Cloudflare Pages.
+- Kamus dapat diunduh sebagai CSV UTF-8 untuk dibuka di spreadsheet.
+- PWA/service worker menyimpan shell aplikasi, materi, kamus, gambar, dan PDF agar dapat dibuka kembali saat offline pada perangkat yang sudah pernah memuatnya.
+- Status koneksi ditampilkan; hasil kuis dan progres tetap memerlukan internet untuk disimpan ke Supabase.
 
 ## Konfigurasi Supabase
 
@@ -97,3 +100,16 @@ Versi ini memindahkan pemberian XP dan pencatatan penyelesaian materi ke fungsi 
 - Menambahkan header keamanan dasar pada Cloudflare Pages.
 
 Peringatan password bocor tidak bisa diperbaiki melalui SQL atau ZIP; aktifkan dari pengaturan Auth Supabase.
+
+
+## Phase 4 — pengalaman belajar dan offline
+
+- Tema awal mengikuti pengaturan sistem operasi (`system`); pengguna tetap dapat memilih Terang atau Gelap dari halaman Profil.
+- Pemuatan awal hanya mengambil data progres yang dibutuhkan dashboard. Riwayat kuis tidak lagi diminta pada setiap login.
+- PWA menggunakan `manifest.webmanifest` dan `sw.js` untuk menyimpan aset aplikasi, modul pembelajaran, kamus, gambar, dan PDF.
+- Tombol **Unduh kamus CSV** mengekspor seluruh entri, termasuk kata yang memiliki ejaan sama tetapi makna berbeda.
+- Saat offline, materi yang sudah tersimpan dapat dibuka pada perangkat dengan sesi login yang masih tersedia. Penyimpanan hasil kuis dan sinkronisasi progres tetap memerlukan koneksi internet; tidak ada antrean sinkronisasi offline pada versi ini.
+
+### Catatan deploy
+
+Deploy seluruh isi folder proyek ke Cloudflare Pages. Service worker hanya aktif pada HTTPS atau localhost. Setelah deploy, buka website sekali saat online agar browser mengunduh dan memasang cache; buka ulang halaman supaya semua permintaan berikutnya berada di bawah kendali service worker.

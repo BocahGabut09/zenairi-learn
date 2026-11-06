@@ -4,17 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2864e8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <meta name="description" content="Zenairi Learn — ruang belajar bahasa Zenairi." />
     <title>Zenairi Learn — Belajar, berkembang, bersama Zeni</title>
     <link rel="icon" href="./assets/zeni-mark.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="./assets/zeni-avatar.webp" />
+    <link rel="apple-touch-icon" href="./assets/pwa-icon-192.png" />
     <link rel="stylesheet" href="./assets/styles.css" />
   </head>
   <body>
     <div id="app"><div class="boot-screen"><div class="boot-mark">Z</div><p>Menyiapkan ruang belajar Zenairi…</p></div></div>
     <div id="toast-root" aria-live="polite"></div>
-    <!-- Modul tambahan dijalankan sebelum app.js agar data baru tersedia saat render pertama. -->
-    <script type="module" src="./src/expansion.js"></script>
     <script type="module" src="./src/app.js"></script>
   </body>
 </html>
