@@ -1,0 +1,9 @@
+PAKET TAMBAHAN ZENAIRI LEARN
+
+Isi paket ini hanya menambahkan:
+- index.html (satu modul script tambahan, app.js asli tetap dipanggil)
+- src/expansion.js (87 entri kosakata tambahan, 24 soal tambahan, pedoman serapan, kartu panduan)
+- docs/pedoman-serapan-zenairi.md (dokumen pedoman)
+
+Tidak ada file lama yang dihapus. Tidak ada perubahan database atau migrasi Supabase.
+Ekstrak isi ZIP ke folder zenairi-learn yang sudah ada, pilih gabungkan/replace untuk index.html saja.
