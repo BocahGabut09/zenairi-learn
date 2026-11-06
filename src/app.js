@@ -15,13 +15,9 @@ const state = {
 
 const todayJakarta = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const yesterdayJakarta = () => {
-  const now = new Date();
-  const jakartaNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-  jakartaNow.setDate(jakartaNow.getDate() - 1);
-  const y = jakartaNow.getFullYear();
-  const m = String(jakartaNow.getMonth() + 1).padStart(2, '0');
-  const d = String(jakartaNow.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const [year, month, day] = todayJakarta().split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day - 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
 };
 const escapeHTML = (value = '') => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const initials = name => (name || 'Z').trim().split(/\s+/).slice(0,2).map(x => x[0]).join('').toUpperCase();
@@ -59,9 +55,8 @@ async function loadAccount(session) {
   } else if (progressResult.data) {
     state.progress = progressResult.data;
   } else {
+    // Baris progres dibuat secara atomik oleh RPC saat materi pertama diselesaikan.
     state.progress = { xp: 0, level: 1, streak: 0, last_activity_date: null, completed_lessons: [] };
-    const { error } = await supabase.from('user_progress').upsert({ user_id: state.user.id, ...state.progress }, { onConflict: 'user_id' });
-    if (error) toast(`Progres awal belum tersimpan: ${error.message}`, 'error');
   }
   if (attemptsResult.error) toast(`Riwayat kuis belum termuat: ${attemptsResult.error.message}`, 'error');
   state.attempts = attemptsResult.data || [];
@@ -69,48 +64,24 @@ async function loadAccount(session) {
   render();
 }
 
-async function saveProgress({ xpGain = 0, lessonId = null } = {}) {
-  if (!state.user) return;
-  const today = todayJakarta();
-  const previousDate = state.progress.last_activity_date;
-  let streak = state.progress.streak || 0;
-  if (previousDate !== today) streak = previousDate === yesterdayJakarta() ? streak + 1 : 1;
-  const completed = new Set(state.progress.completed_lessons || []);
-  if (lessonId) completed.add(lessonId);
-  const xp = (state.progress.xp || 0) + xpGain;
-  const nextProgress = {
-    user_id: state.user.id,
-    xp,
-    level: Math.floor(xp / 100) + 1,
-    streak,
-    last_activity_date: today,
-    completed_lessons: [...completed]
-  };
-  const { data, error } = await supabase.from('user_progress').upsert(nextProgress, { onConflict: 'user_id' }).select().single();
-  if (error) throw error;
-  state.progress = data;
-}
-
 async function completeLesson(score, total) {
   if (!state.user || !state.lesson) return;
   state.busy = true;
   render();
   try {
-    const alreadyDone = isComplete(state.lesson.id);
-    const xpGain = alreadyDone ? 0 : Math.max(8, score * 5 + (score === total ? 10 : 0));
-    const { error: attemptError } = await supabase.from('quiz_attempts').insert({
-      user_id: state.user.id,
-      lesson_id: state.lesson.id,
-      score,
-      total_questions: total
+    const { data, error } = await supabase.rpc('complete_zenairi_lesson', {
+      p_lesson_id: state.lesson.id,
+      p_score: score,
+      p_total_questions: total
     });
-    if (attemptError) throw attemptError;
-    await saveProgress({ xpGain, lessonId: state.lesson.id });
-    state.attempts = [{ id: crypto.randomUUID(), lesson_id: state.lesson.id, score, total_questions: total, created_at: new Date().toISOString() }, ...state.attempts].slice(0,8);
+    if (error) throw error;
+    state.progress = data.progress;
+    state.attempts = [data.attempt, ...state.attempts].slice(0, 8);
     state.quizSubmitted = true;
     state.busy = false;
     render();
-    toast(alreadyDone ? 'Kuis selesai! Materi ini sudah pernah memberi XP.' : `Mantap! +${xpGain} XP masuk ke akunmu.`, 'success');
+    const xpGain = Number(data.xp_gain) || 0;
+    toast(xpGain > 0 ? `Mantap! +${xpGain} XP masuk ke akunmu.` : 'Kuis tersimpan. Materi ini sudah pernah memberi XP.', 'success');
   } catch (error) {
     state.busy = false;
     render();
@@ -248,7 +219,7 @@ function achievementPage() {
 
 function profilePage() {
   const name = state.user?.user_metadata?.display_name || state.user?.email?.split('@')[0] || 'Pelajar';
-  return `<section class="page-intro"><p class="eyebrow">AKUN DAN PERJALANAN</p><h1>Profil pelajar</h1><p class="muted">Informasi akun dan ringkasan perjalanan Zenairi-mu.</p></section><section class="profile-hero"><div class="profile-avatar-large">${escapeHTML(initials(name))}</div><div class="profile-main"><span class="profile-role">PEL AJAR ZENAIRI</span><h2>${escapeHTML(name)}</h2><p>${escapeHTML(state.user?.email || '')}</p></div><div class="profile-level">LEVEL<strong>${state.progress.level || 1}</strong></div></section><section class="profile-stats"><div><span>Total XP</span><b>${state.progress.xp || 0}</b></div><div><span>Streak</span><b>${state.progress.streak || 0} hari</b></div><div><span>Materi selesai</span><b>${completedCount()} / ${lessons.length}</b></div></section><section class="panel settings-panel"><div><p class="eyebrow">PENGATURAN TAMPILAN</p><h3>Tema yang nyaman</h3><p class="muted">Pilih tampilan terang atau gelap. Pilihan tersimpan di perangkat ini.</p><button class="btn btn-outline theme-profile-button" data-action="toggle-theme">${document.documentElement.dataset.theme === 'dark' ? '☀️ Gunakan tema terang' : '🌙 Gunakan tema gelap'}</button></div><div class="account-settings"><p class="eyebrow">PENGATURAN AKUN</p><h3>Kelola sesi belajarmu</h3><p class="muted">Progres belajar ditautkan ke akun Supabase dan hanya dapat dibaca oleh pemilik akun.</p><button class="btn btn-outline" data-action="logout">Keluar dari akun ↗</button></div></section><section class="profile-footnote">Bergabung dalam perjalanan Zenairi · Satu bahasa, satu identitas.</section>`;
+  return `<section class="page-intro"><p class="eyebrow">AKUN DAN PERJALANAN</p><h1>Profil pelajar</h1><p class="muted">Informasi akun dan ringkasan perjalanan Zenairi-mu.</p></section><section class="profile-hero"><div class="profile-avatar-large">${escapeHTML(initials(name))}</div><div class="profile-main"><span class="profile-role">PELAJAR ZENAIRI</span><h2>${escapeHTML(name)}</h2><p>${escapeHTML(state.user?.email || '')}</p></div><div class="profile-level">LEVEL<strong>${state.progress.level || 1}</strong></div></section><section class="profile-stats"><div><span>Total XP</span><b>${state.progress.xp || 0}</b></div><div><span>Streak</span><b>${state.progress.streak || 0} hari</b></div><div><span>Materi selesai</span><b>${completedCount()} / ${lessons.length}</b></div></section><section class="panel settings-panel"><div><p class="eyebrow">PENGATURAN TAMPILAN</p><h3>Tema yang nyaman</h3><p class="muted">Pilih tampilan terang atau gelap. Pilihan tersimpan di perangkat ini.</p><button class="btn btn-outline theme-profile-button" data-action="toggle-theme">${document.documentElement.dataset.theme === 'dark' ? '☀️ Gunakan tema terang' : '🌙 Gunakan tema gelap'}</button></div><div class="account-settings"><p class="eyebrow">PENGATURAN AKUN</p><h3>Kelola sesi belajarmu</h3><p class="muted">Progres belajar ditautkan ke akun Supabase dan hanya dapat dibaca oleh pemilik akun.</p><button class="btn btn-outline" data-action="logout">Keluar dari akun ↗</button></div></section><section class="profile-footnote">Bergabung dalam perjalanan Zenairi · Satu bahasa, satu identitas.</section>`;
 }
 
 function questionExplanation(question) {

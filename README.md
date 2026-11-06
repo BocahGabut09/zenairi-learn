@@ -70,3 +70,30 @@ Agar Google Login berfungsi:
 4. Di Supabase → Authentication → URL Configuration, atur Site URL ke alamat produksi website dan tambahkan alamat website ke Redirect URLs.
 
 **Keamanan:** jangan menaruh Client Secret atau `service_role` key di file frontend atau ZIP. Masukkan Client Secret langsung ke dashboard Supabase.
+
+
+## Pembaruan keamanan (6 November 2026)
+
+Versi ini memindahkan pemberian XP dan pencatatan penyelesaian materi ke fungsi database `complete_zenairi_lesson`. Browser tidak lagi boleh menulis langsung ke tabel progres/riwayat. XP diberikan tetap **20 XP satu kali per materi**; mengulang kuis tetap mencatat percobaan tetapi tidak menambah XP lagi. Fungsi juga memvalidasi ID materi, rentang skor, dan menjaga update progres tetap atomik.
+
+### Wajib dilakukan sebelum deploy versi ini
+
+1. Buka Supabase Dashboard → **SQL Editor**.
+2. Buka file `supabase/migrations/202611060001_secure_lesson_progress.sql`, salin seluruh SQL, lalu jalankan sekali. Ini mengubah izin tulis tabel agar sesuai dengan aplikasi baru.
+3. Buka Authentication → Settings / Password Security, lalu aktifkan **Leaked password protection** jika tersedia pada paket/proyekmu. Ini pengaturan dashboard dan tidak dapat diaktifkan dari file frontend.
+4. Deploy folder proyek ini ke Cloudflare Pages.
+5. Uji login, selesaikan satu materi, refresh halaman, lalu pastikan XP dan materi selesai tetap tersimpan. Ulangi materi yang sama: XP tidak boleh bertambah lagi.
+
+**Catatan audit:** skor kuis tetap merupakan hasil yang dikirim browser dan tidak dipakai untuk menghitung XP. Untuk materi berisiko rendah seperti kuis pembelajaran, ini mencegah manipulasi saldo XP berulang; bila kelak XP dipakai untuk hadiah/kompetisi bernilai, jawaban kuis harus diverifikasi server-side.
+
+### Temuan yang diperbaiki dalam paket ini
+
+- Menutup hak eksekusi `public.rls_auto_enable()` untuk `PUBLIC`, `anon`, dan `authenticated`; event trigger tetap dapat menjalankan fungsinya saat DDL.
+- Fungsi RPC `complete_zenairi_lesson` sengaja tetap `SECURITY DEFINER` dan hanya dapat dipanggil role `authenticated`; Supabase Advisor menandai pola ini sebagai peringatan karena fungsi privileged memang harus tersedia untuk login. Fungsi memeriksa `auth.uid()`, membatasi ID materi, memvalidasi rentang skor, dan hanya menulis progres milik pemanggil.
+- Menghapus kebijakan tulis langsung pengguna pada tabel progres dan percobaan kuis; pembacaan tetap dilindungi RLS.
+- Menambahkan RPC terautentikasi untuk mencatat hasil kuis dan menghitung XP/streak secara atomik.
+- Menghindari pembuatan baris progres dari browser saat akun baru dimuat.
+- Memperbaiki perhitungan tanggal kemarin berdasarkan kalender Jakarta tanpa parsing tanggal melalui zona waktu perangkat.
+- Menambahkan header keamanan dasar pada Cloudflare Pages.
+
+Peringatan password bocor tidak bisa diperbaiki melalui SQL atau ZIP; aktifkan dari pengaturan Auth Supabase.
