@@ -35,6 +35,118 @@ export const dictionary = [
   ['pa','Penanda masa lalu','Aturan bahasa'],['fu','Penanda masa depan','Aturan bahasa'],['ri','Penanda kegiatan yang sedang berlangsung','Aturan bahasa'],
   // P. Kata Seru dan Sapaan
   ['Sava!','Halo!','Kata seru dan sapaan'],['Yena!','Selamat!','Kata seru dan sapaan'],['Ayo!','Ayo!','Kata seru dan sapaan'],['Nara!','Aduh!','Kata seru dan sapaan'],['Zena!','Wah!','Kata seru dan sapaan'],['Leya!','Terima kasih!','Kata seru dan sapaan'],['Meya!','Maaf!','Kata seru dan sapaan'],['Seya!','Sampai jumpa!','Kata seru dan sapaan'],
+
+  // Ekspansi Phase 5 — kosakata usulan baru
+  ['Nima','Wajah','Tubuh manusia'],
+  ['Miro','Mata','Tubuh manusia'],
+  ['Seno','Telinga','Tubuh manusia'],
+  ['Navo','Hidung','Tubuh manusia'],
+  ['Rema','Mulut','Tubuh manusia'],
+  ['Kavo','Tangan','Tubuh manusia'],
+  ['Daro','Kaki','Tubuh manusia'],
+  ['Sura','Kepala','Tubuh manusia'],
+  ['Meno','Rambut','Tubuh manusia'],
+  ['Teno','Jari','Tubuh manusia'],
+  ['Voro','Petir','Alam dan cuaca'],
+  ['Zuno','Salju','Alam dan cuaca'],
+  ['Fero','Pasir','Alam dan cuaca'],
+  ['Rono','Danau','Alam dan cuaca'],
+  ['Soro','Kabut','Alam dan cuaca'],
+  ['Keno','Rumput','Alam dan cuaca'],
+  ['Veloa','Daun','Alam dan cuaca'],
+  ['Zalo','Pantai','Alam dan cuaca'],
+  ['Favo','Ombak','Alam dan cuaca'],
+  ['Yero','Pelangi','Alam dan cuaca'],
+  ['Bera','Mobil','Transportasi'],
+  ['Sero','Sepeda','Transportasi'],
+  ['Koro','Bus','Transportasi'],
+  ['Deno','Kereta','Transportasi'],
+  ['Varo','Pesawat','Transportasi'],
+  ['Tero','Stasiun','Transportasi'],
+  ['Peno','Tiket','Transportasi'],
+  ['Riko','Perjalanan','Transportasi'],
+  ['Zeno','Peta','Transportasi'],
+  ['Feno','Bandara','Transportasi'],
+  ['Ravo','Sedih','Perasaan'],
+  ['Tavo','Marah','Perasaan'],
+  ['Zeri','Takut','Perasaan'],
+  ['Neri','Tenang','Perasaan'],
+  ['Yeno','Senang','Perasaan'],
+  ['Veno','Lelah','Perasaan'],
+  ['Liro','Cepat','Sifat'],
+  ['Dirao','Lambat','Sifat'],
+  ['Zira','Ramah','Sifat'],
+  ['Kiro','Kuat','Sifat'],
+  ['Pavo','Lengan','Tubuh manusia'],
+  ['Savo','Bahu','Tubuh manusia'],
+  ['Tirao','Lutut','Tubuh manusia'],
+  ['Venoa','Punggung','Tubuh manusia'],
+  ['Maro','Darah','Tubuh manusia'],
+  ['Kenao','Kulit','Tubuh manusia'],
+  ['Firao','Gigi','Tubuh manusia'],
+  ['Leno','Leher','Tubuh manusia'],
+  ['Reno','Perut','Tubuh manusia'],
+  ['Zavo','Jantung','Tubuh manusia'],
+  ['Doro','Akar','Alam dan cuaca'],
+  ['Poro','Batu kecil','Alam dan cuaca'],
+  ['Mavo','Lumpur','Alam dan cuaca'],
+  ['Tuno','Gurun','Alam dan cuaca'],
+  ['Velo','Lembah','Alam dan cuaca'],
+  ['Ralo','Pulau','Alam dan cuaca'],
+  ['Kavoa','Gua','Alam dan cuaca'],
+  ['Suno','Hujan deras','Alam dan cuaca'],
+  ['Falo','Badai','Alam dan cuaca'],
+  ['Yavo','Embun','Alam dan cuaca'],
+  ['Dero','Kapal','Transportasi'],
+  ['Mero','Perahu','Transportasi'],
+  ['Perao','Pelabuhan','Transportasi'],
+  ['Lavo','Helm','Transportasi'],
+  ['Zoro','Jembatan','Transportasi'],
+  ['Tavoa','Terminal','Transportasi'],
+  ['Kero','Pengemudi','Transportasi'],
+  ['Siro','Penumpang','Transportasi'],
+  ['Firo','Koper','Transportasi'],
+  ['Noro','Kompas','Transportasi'],
+  ['Miroa','Bangga','Perasaan'],
+  ['Seroa','Gugup','Perasaan'],
+  ['Feroa','Kesal','Perasaan'],
+  ['Liroa','Penasaran','Perasaan'],
+  ['Navoa','Khawatir','Perasaan'],
+  ['Kiroa','Berani','Sifat'],
+  ['Riro','Jujur','Sifat'],
+  ['Viro','Sabar','Sifat'],
+  ['Ziro','Cerdas','Sifat'],
+  ['Piro','Rajin','Sifat'],
+  ['Daviu','Dapur','Rumah dan peralatan'],
+  ['Saviu','Kamar mandi','Rumah dan peralatan'],
+  ['Keli','Sendok','Rumah dan peralatan'],
+  ['Teli','Garpu','Rumah dan peralatan'],
+  ['Feli','Piring','Rumah dan peralatan'],
+  ['Meli','Gelas','Rumah dan peralatan'],
+  ['Ruli','Handuk','Rumah dan peralatan'],
+  ['Zuli','Sabun','Rumah dan peralatan'],
+  ['Puli','Sapu','Rumah dan peralatan'],
+  ['Nuli','Bantal','Rumah dan peralatan'],
+  ['Denao','Kebun','Tempat'],
+  ['Senao','Pasar','Tempat'],
+  ['Kenao2','Perpustakaan','Tempat'],
+  ['Venao','Rumah sakit','Tempat'],
+  ['Lenao','Toko','Tempat'],
+  ['Menao','Kantor','Tempat'],
+  ['Renao','Taman','Tempat'],
+  ['Zenao','Museum','Tempat'],
+  ['Penao','Restoran','Tempat'],
+  ['Tenao','Lapangan','Tempat'],
+  ['Furao','Memilih','Kata kerja'],
+  ['Zurao','Menjelaskan','Kata kerja'],
+  ['Varao','Memulai','Kata kerja'],
+  ['Darao','Mengakhiri','Kata kerja'],
+  ['Murao','Mencoba','Kata kerja'],
+  ['Surao','Berubah','Kata kerja'],
+  ['Kurao','Menggambar','Kata kerja'],
+  ['Lurao','Menghitung','Kata kerja'],
+  ['Nurao','Memperbaiki','Kata kerja'],
+  ['Purao','Menyimpan','Kata kerja'],
 ].map(([word, meaning, group], index) => ({ id: `${word.toLowerCase().replace(/[^a-z]/g,'')}-${index}`, word, meaning, group }));
 
 export const grammarRules = [
@@ -46,7 +158,10 @@ export const grammarRules = [
   'ri digunakan untuk kegiatan yang sedang berlangsung.',
   'ne digunakan untuk menyatakan tidak.',
   'ha digunakan untuk pertanyaan ya atau tidak.',
-  'Kata dibaca sesuai dengan tulisannya.'
+  'Kata dibaca sesuai dengan tulisannya.',
+  'fi menunjukkan arah atau tujuan, misalnya fi toka (ke rumah).',
+  'no menunjukkan lokasi, misalnya no toka (di rumah).',
+  'Kata tanya dapat diletakkan di awal kalimat untuk meminta informasi.'
 ];
 
 export const sampleSentences = [
@@ -59,7 +174,14 @@ export const sampleSentences = [
   ['Kana ri saro.','Kita sedang berbicara.'],
   ['Ka ne lima.','Aku tidak tidur.'],
   ['Toka gava.','Rumah besar.'],
-  ['Davi mili.','Buku kecil.']
+  ['Davi mili.','Buku kecil.'],
+  ['Ka vena miro.','Aku melihat mata.'],
+  ['Ka dora fi tero.','Aku pergi ke stasiun.'],
+  ['Kana ri dora fi zalo.','Kita sedang pergi ke pantai.'],
+  ['Ta vena yero.','Kamu melihat pelangi.'],
+  ['Lu pa dora fi toka.','Dia sudah pergi ke rumah.'],
+  ['Ka ri mako no toka.','Aku sedang makan di rumah.'],
+  ['Ta fu dora fi soka.','Kamu akan pergi ke sekolah.']
 ];
 
 export const lessons = [
@@ -141,6 +263,47 @@ export const lessons = [
       ['Sina berarti …','Siapa',['Di mana','Kenapa','Siapa','Apa']],
       ['Vano berarti …','Di mana',['Kapan','Di mana','Bagaimana','Siapa']],
       ['ha digunakan untuk …','Pertanyaan ya atau tidak',['Masa depan','Pertanyaan ya atau tidak','Masa lalu','Menyatakan milik']],
+    ]
+  }
+
+  ,{
+    id:'keluarga-tubuh', title:'Tubuh Manusia', subtitle:'Mengenal bagian tubuh', icon:'🧑', color:'mint',
+    words:['Nima','Miro','Seno','Navo','Rema','Kavo','Daro','Sura','Meno','Teno'],
+    questions:[
+      ['Miro berarti …','Mata',['Telinga','Mata','Hidung','Mulut']],
+      ['Kavo berarti …','Tangan',['Kaki','Kepala','Tangan','Jari']],
+      ['Sura berarti …','Kepala',['Wajah','Rambut','Kepala','Mata']],
+      ['Teno berarti …','Jari',['Tangan','Jari','Kaki','Mulut']]
+    ]
+  },
+  {
+    id:'alam-cuaca', title:'Alam & Cuaca', subtitle:'Mengenal lingkungan sekitar', icon:'🌦️', color:'lavender',
+    words:['Voro','Zuno','Fero','Rono','Soro','Keno','Vira','Zalo','Favo','Yero'],
+    questions:[
+      ['Voro berarti …','Petir',['Hujan','Petir','Angin','Awan']],
+      ['Rono berarti …','Danau',['Sungai','Laut','Danau','Pantai']],
+      ['Vira berarti …','Daun',['Bunga','Rumput','Daun','Pohon']],
+      ['Yero berarti …','Pelangi',['Kabut','Pelangi','Salju','Pasir']]
+    ]
+  },
+  {
+    id:'perjalanan', title:'Perjalanan', subtitle:'Transportasi dan arah perjalanan', icon:'🚆', color:'gold',
+    words:['Bera','Sero','Koro','Deno','Varo','Tero','Peno','Riko','Zeno','Feno'],
+    questions:[
+      ['Bera berarti …','Mobil',['Bus','Kereta','Mobil','Pesawat']],
+      ['Deno berarti …','Kereta',['Sepeda','Kereta','Mobil','Bus']],
+      ['Peno berarti …','Tiket',['Peta','Bandara','Tiket','Stasiun']],
+      ['Feno berarti …','Bandara',['Stasiun','Bandara','Perjalanan','Peta']]
+    ]
+  },
+  {
+    id:'sifat-perasaan', title:'Sifat & Perasaan', subtitle:'Mengungkapkan perasaan dan sifat', icon:'💭', color:'peach',
+    words:['Ravo','Tavo','Zeri','Neri','Yeno','Veno','Liro','Dira','Zira','Kiro'],
+    questions:[
+      ['Ravo berarti …','Sedih',['Senang','Sedih','Marah','Tenang']],
+      ['Zeri berarti …','Takut',['Takut','Kuat','Ramah','Lelah']],
+      ['Liro berarti …','Cepat',['Lambat','Tenang','Cepat','Kuat']],
+      ['Zira berarti …','Ramah',['Marah','Ramah','Sedih','Takut']]
     ]
   }
 ];
